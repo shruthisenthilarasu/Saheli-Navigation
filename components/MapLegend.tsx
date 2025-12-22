@@ -20,9 +20,9 @@ interface MapLegendProps {
  */
 export default function MapLegend({ style }: MapLegendProps) {
   const legendItems: LegendItem[] = [
-    { color: colors.safe.primary, label: 'Verified' },
-    { color: colors.caution.primary, label: 'Under Repair' },
-    { color: colors.unsafe.primary, label: 'Unsafe' },
+    { color: '#10B981', label: 'Verified' }, // Green - verified stations
+    { color: '#F59E0B', label: 'Unverified' }, // Yellow/Amber - unverified stations
+    { color: '#EF4444', label: 'Unsafe' }, // Red - non-operational or unsafe
   ];
 
   return (

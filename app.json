@@ -37,6 +37,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "mapboxToken": "pk.eyJ1Ijoic2hydXRoaXNlbnRoIiwiYSI6ImNtamZyc3FxZDB0Z2MzY3NsdngxaThoemkifQ.lVKO7jgDFoIuBbCa4mrMpg",
+      "supabaseUrl": "https://zlfwguswvvcmboalviyf.supabase.co",
+      "supabaseAnonKey": "sb_publishable_zDVNJHkmIryGzD2qaxG1kg_rC0aKvcm"
     }
   }
 }

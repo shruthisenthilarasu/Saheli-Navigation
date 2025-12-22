@@ -60,19 +60,50 @@ export default function ReportStationIssueModal({
       return;
     }
 
+    // Validate coordinates
+    if (!station.coordinates || 
+        typeof station.coordinates.latitude !== 'number' || 
+        typeof station.coordinates.longitude !== 'number' ||
+        isNaN(station.coordinates.latitude) || 
+        isNaN(station.coordinates.longitude)) {
+      Alert.alert('Error', 'Invalid station coordinates. Please try again.');
+      return;
+    }
+
     try {
       setSubmitting(true);
 
       // Get current location for the report
       let coordinates = station.coordinates;
       try {
-        const location = await Location.getCurrentPositionAsync({});
-        coordinates = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+          timeout: 5000,
+        });
+        // Validate location coordinates
+        if (location.coords.latitude && location.coords.longitude &&
+            !isNaN(location.coords.latitude) && !isNaN(location.coords.longitude)) {
+          coordinates = {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          };
+        }
       } catch (error) {
         console.warn('Could not get current location, using station coordinates');
+        // Fallback to station coordinates is already set above
+      }
+
+      // Final validation of coordinates before submission
+      if (!coordinates || 
+          typeof coordinates.latitude !== 'number' || 
+          typeof coordinates.longitude !== 'number' ||
+          isNaN(coordinates.latitude) || 
+          isNaN(coordinates.longitude) ||
+          coordinates.latitude < -90 || coordinates.latitude > 90 ||
+          coordinates.longitude < -180 || coordinates.longitude > 180) {
+        Alert.alert('Error', 'Invalid coordinates. Please check your location settings and try again.');
+        setSubmitting(false);
+        return;
       }
 
       const result = await submitReportWithOfflineSupport({

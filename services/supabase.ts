@@ -4,8 +4,10 @@ import { Station, UserReport } from '../types/models';
 import { cacheStations, getCachedStations } from './offlineStorage';
 
 // Get Supabase URL and anon key from environment variables
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || 
+                    (typeof process !== 'undefined' ? process.env.EXPO_PUBLIC_SUPABASE_URL : undefined);
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || 
+                         (typeof process !== 'undefined' ? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY : undefined);
 
 // Create Supabase client with fallback to dummy values if not configured
 // This allows the app to run without Supabase configured (for UI development)
@@ -14,10 +16,23 @@ const finalKey = supabaseAnonKey || 'placeholder-key';
 
 export const supabase = createClient(finalUrl, finalKey);
 
+// Check if Supabase is properly configured
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey && 
+  supabaseUrl !== 'https://placeholder.supabase.co' && 
+  supabaseAnonKey !== 'placeholder-key');
+
+// Debug logging
+console.log('Supabase configuration:', {
+  hasUrl: !!supabaseUrl,
+  hasKey: !!supabaseAnonKey,
+  url: supabaseUrl?.substring(0, 30) + '...',
+  isConfigured: isSupabaseConfigured
+});
+
 // Warn if Supabase is not configured (but don't crash the app)
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!isSupabaseConfigured) {
   console.warn(
-    '⚠️ Supabase not configured. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env file or app.json extra config.'
+    '⚠️ Supabase not configured. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env.local file or app.json extra config.'
   );
 }
 
@@ -62,6 +77,20 @@ export async function fetchStations(
   },
   useCache: boolean = true
 ): Promise<Station[]> {
+  // If Supabase is not configured, return empty array instead of throwing
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured, returning empty stations array');
+    // Try to return cached data if available
+    if (useCache) {
+      const { getCachedStations } = await import('./offlineStorage');
+      const cachedStations = await getCachedStations();
+      if (cachedStations) {
+        return cachedStations;
+      }
+    }
+    return [];
+  }
+
   try {
     let query = supabase
       .from('stations')
@@ -258,6 +287,98 @@ function transformReportRow(row: any): UserReport {
     createdAt: new Date(row.created_at),
     lastUpdated: new Date(row.updated_at),
     userId: row.user_id,
+  };
+}
+
+/**
+ * Subscribe to real-time station updates
+ * @param callback - Function called when stations are updated
+ * @returns Function to unsubscribe
+ */
+export function subscribeToStationUpdates(
+  callback: (payload: { eventType: 'INSERT' | 'UPDATE' | 'DELETE'; station: Station | null; oldStation?: Station }) => void
+): () => void {
+  const channel = supabase
+    .channel('stations-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'stations',
+        filter: 'deleted_at=is.null', // Only listen to non-deleted stations
+      },
+      async (payload) => {
+        try {
+          if (payload.eventType === 'DELETE') {
+            // For deletes, we can't fetch the station, so pass null
+            callback({
+              eventType: 'DELETE',
+              station: null,
+            });
+            return;
+          }
+
+          // For INSERT and UPDATE, fetch the full station data
+          const stationId = payload.new?.id || payload.old?.id;
+          if (!stationId) return;
+
+          const station = await fetchStationById(stationId);
+          if (station) {
+            callback({
+              eventType: payload.eventType as 'INSERT' | 'UPDATE',
+              station,
+            });
+          }
+        } catch (error) {
+          console.error('Error processing station update:', error);
+        }
+      }
+    )
+    .subscribe();
+
+  // Return unsubscribe function
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+/**
+ * Subscribe to real-time station report updates
+ * @param stationId - Optional station ID to filter reports
+ * @param callback - Function called when reports are added
+ * @returns Function to unsubscribe
+ */
+export function subscribeToReportUpdates(
+  callback: (payload: { report: UserReport }) => void,
+  stationId?: string
+): () => void {
+  const filter: any = {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'station_reports',
+    filter: 'deleted_at=is.null',
+  };
+
+  if (stationId) {
+    filter.filter = `station_id=eq.${stationId} AND deleted_at=is.null`;
+  }
+
+  const channel = supabase
+    .channel('reports-changes')
+    .on('postgres_changes', filter, async (payload) => {
+      try {
+        const report = transformReportRow(payload.new);
+        callback({ report });
+      } catch (error) {
+        console.error('Error processing report update:', error);
+      }
+    })
+    .subscribe();
+
+  // Return unsubscribe function
+  return () => {
+    supabase.removeChannel(channel);
   };
 }
 

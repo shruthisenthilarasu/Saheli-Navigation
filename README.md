@@ -92,21 +92,28 @@ Onboarding is designed to be:
 - **Design system** — Color palette, typography, spacing, and accessibility guidelines
 - **Permission handling** — Location and audio permission requests with graceful fallbacks
 
+### Recently Completed (Web Deployment)
+
+- **MapView enabled** — Mapbox GL JS integration active for web platform
+- **Real station data** — Connected to Supabase for live station data
+- **Map markers** — Station markers rendered on map with color-coded status
+- **Real-time updates** — Supabase subscriptions for live station updates
+- **Report submission** — Connected to backend with offline queuing support
+- **Environment configuration** — Proper setup for Mapbox and Supabase credentials
+
 ### Intentionally Scaffolded/Mocked
 
-- **Station data** — Mock array with 6 stations; real data would come from Supabase
-- **Map rendering** — MapView.web.tsx exists but currently disabled; grid placeholder shows marker logic
 - **SOS backend** — UI and navigation complete; SMS and alarm triggers are placeholders
-- **Offline sync** — Architecture in place (AsyncStorage imports, service structure) but not yet implemented
-- **Report submission** — UI components exist; backend integration pending
+- **Offline sync** — Basic implementation in place; full conflict resolution pending
+- **Marker clustering** — Basic implementation; full GeoJSON clustering can be enhanced
 
 ### Next Steps
 
-1. **Enable MapView** — Activate Mapbox integration and replace grid placeholder
-2. **Connect Supabase** — Replace mock stations with real database queries
-3. **Implement offline sync** — Complete AsyncStorage caching and report queuing
-4. **Add station markers to map** — Render markers on actual map using Mapbox markers API
-5. **Complete SOS flow** — Integrate SMS service and audio alarm playback
+1. **Production deployment** — Deploy to Vercel/Netlify with environment variables
+2. **Performance optimization** — Implement full marker clustering for >100 stations
+3. **Complete SOS flow** — Integrate SMS service (Twilio/AWS SNS) and audio alarm playback
+4. **Error tracking** — Add Sentry or similar for production error monitoring
+5. **PWA features** — Enable service worker for offline support
 
 ## Future Improvements
 
@@ -139,13 +146,18 @@ Onboarding is designed to be:
    npm install
    ```
 
-3. **Configure environment variables** (optional)
-   Create a `.env` file in the root directory:
+3. **Configure environment variables**
+   Create a `.env.local` file in the root directory (see `ENV_SETUP.md` for details):
    ```bash
    EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```
+   
+   **Required for full functionality:**
+   - Mapbox token: Get from https://account.mapbox.com/access-tokens/
+   - Supabase credentials: Get from your Supabase project settings
+   - Database setup: Run `supabase/schema.sql` in your Supabase SQL editor
 
 4. **Start the development server**
    ```bash
@@ -160,9 +172,29 @@ Onboarding is designed to be:
 
 ### Development Notes
 
-- The app runs without Supabase configuration; you'll see console warnings but the UI will function with mock data
-- MapView is currently disabled; the grid placeholder demonstrates marker positioning logic
-- All navigation and UI flows are functional and can be tested without backend services
+- The app runs without Supabase/Mapbox configuration; you'll see console warnings and fallback UI
+- MapView automatically enables on web when Mapbox token is configured
+- Grid placeholder shows as fallback when map is unavailable
+- All navigation and UI flows are functional
+
+### Building for Web Production
+
+1. **Build static export:**
+   ```bash
+   npx expo export:web
+   ```
+
+2. **Preview locally:**
+   ```bash
+   npx serve web-build
+   ```
+
+3. **Deploy to hosting:**
+   - **Vercel**: Connect GitHub repo, set environment variables in dashboard
+   - **Netlify**: Connect GitHub repo, set build command: `npx expo export:web`, publish directory: `web-build`
+   - **Firebase Hosting**: Use `firebase deploy` after configuring firebase.json
+
+See deployment checklist in the project documentation for full details.
 
 ## License
 

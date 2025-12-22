@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Station } from '../types/models';
-import { fetchStations } from '../services/supabase';
+import { fetchStations, subscribeToStationUpdates, isSupabaseConfigured } from '../services/supabase';
 import { getCachedStations } from '../services/offlineStorage';
 
 type StationStatus = 'verified-clean' | 'under-repair' | 'unsafe' | 'other';
@@ -115,14 +115,24 @@ export function useStations(options: UseStationsOptions = {}): UseStationsReturn
       setStations(fetchedStations);
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch stations');
-      setError(error);
       console.error('Error fetching stations:', error);
       
       // If fetch failed, try to use cache as fallback
       const cachedStations = await getCachedStations();
-      if (cachedStations) {
+      if (cachedStations && cachedStations.length > 0) {
         setStations(cachedStations);
         setError(null); // Clear error if we have cached data
+      } else {
+        // Only set error if we have no cached data
+        // If Supabase isn't configured, empty array is expected
+        const errorMessage = error.message.toLowerCase();
+        if (!errorMessage.includes('not configured') && !errorMessage.includes('placeholder')) {
+          setError(error);
+        } else {
+          // Supabase not configured - this is expected, don't show error
+          setStations([]);
+          setError(null);
+        }
       }
     } finally {
       setLoading(false);
@@ -134,6 +144,42 @@ export function useStations(options: UseStationsOptions = {}): UseStationsReturn
       fetchStationsData();
     }
   }, [fetchOnMount, fetchStationsData]);
+
+  // Set up real-time subscription for station updates (only if Supabase is configured)
+  useEffect(() => {
+    // Only subscribe if Supabase is properly configured
+    if (!isSupabaseConfigured) {
+      return;
+    }
+
+    const unsubscribe = subscribeToStationUpdates((payload) => {
+      setStations((currentStations) => {
+        if (payload.eventType === 'DELETE') {
+          // Remove deleted station
+          return currentStations.filter(s => s.id !== payload.oldStation?.id);
+        }
+        
+        if (payload.eventType === 'INSERT' && payload.station) {
+          // Add new station
+          return [...currentStations, payload.station];
+        }
+        
+        if (payload.eventType === 'UPDATE' && payload.station) {
+          // Update existing station
+          return currentStations.map(s => 
+            s.id === payload.station!.id ? payload.station! : s
+          );
+        }
+        
+        return currentStations;
+      });
+    });
+
+    // Cleanup subscription on unmount
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     await fetchStationsData();
