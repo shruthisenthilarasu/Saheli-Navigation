@@ -286,11 +286,12 @@ export default function HomeMapScreen() {
     });
   }, [stations, selectedFilter]);
   
-  // Get Mapbox token from environment - try multiple sources
-  const mapboxToken = Constants.expoConfig?.extra?.mapboxToken || 
-                      Constants.expoConfig?.extra?.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ||
-                      (typeof process !== 'undefined' && process.env ? process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN : undefined) ||
-                      (typeof window !== 'undefined' ? (window as any).__EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN__ : undefined);
+  // Get Mapbox token, preferring runtime/build env values over app.json extras.
+  const mapboxToken =
+    (typeof process !== 'undefined' && process.env ? process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN : undefined) ||
+    (typeof window !== 'undefined' ? (window as any).__EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN__ : undefined) ||
+    Constants.expoConfig?.extra?.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ||
+    Constants.expoConfig?.extra?.mapboxToken;
   
   // Check if Mapbox token is actually valid (not placeholder)
   const hasValidMapboxToken = mapboxToken && 

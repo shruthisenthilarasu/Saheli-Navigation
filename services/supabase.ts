@@ -3,11 +3,15 @@ import Constants from 'expo-constants';
 import { Station, UserReport } from '../types/models';
 import { cacheStations, getCachedStations } from './offlineStorage';
 
-// Get Supabase URL and anon key from environment variables
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || 
-                    (typeof process !== 'undefined' ? process.env.EXPO_PUBLIC_SUPABASE_URL : undefined);
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || 
-                         (typeof process !== 'undefined' ? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY : undefined);
+// Get Supabase URL and anon key from env, then fall back to app.json extras.
+const supabaseUrl =
+  (typeof process !== 'undefined' ? process.env.EXPO_PUBLIC_SUPABASE_URL : undefined) ||
+  Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL ||
+  Constants.expoConfig?.extra?.supabaseUrl;
+const supabaseAnonKey =
+  (typeof process !== 'undefined' ? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY : undefined) ||
+  Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  Constants.expoConfig?.extra?.supabaseAnonKey;
 
 // Create Supabase client with fallback to dummy values if not configured
 // This allows the app to run without Supabase configured (for UI development)
