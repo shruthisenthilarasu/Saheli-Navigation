@@ -181,17 +181,17 @@ Onboarding is designed to be:
 
 1. **Build static export:**
    ```bash
-   npx expo export:web
+   npx expo export --platform web
    ```
 
 2. **Preview locally:**
    ```bash
-   npx serve web-build
+   npx serve dist
    ```
 
 3. **Deploy to hosting:**
-   - **Vercel**: Connect GitHub repo, set environment variables in dashboard
-   - **Netlify**: Connect GitHub repo, set build command: `npx expo export:web`, publish directory: `web-build`
+   - **Vercel**: Connect GitHub repo, set environment variables in dashboard (or use `vercel.json`)
+   - **Netlify**: Connect GitHub repo, set build command: `npx expo export --platform web`, publish directory: `dist`
    - **Firebase Hosting**: Use `firebase deploy` after configuring firebase.json
 
 See deployment checklist in the project documentation for full details.

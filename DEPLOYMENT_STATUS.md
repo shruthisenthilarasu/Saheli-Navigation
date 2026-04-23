@@ -57,7 +57,7 @@
 ## 🚧 Remaining Tasks
 
 ### Priority 2: Web Optimization
-- [ ] Test production web build (`npx expo export:web`)
+- [ ] Test production web build (`npx expo export --platform web`)
 - [ ] Verify all routes work in static build
 - [ ] Test responsive design on different screen sizes
 - [ ] Cross-browser compatibility testing
@@ -85,7 +85,7 @@ Before deploying to production:
 - [ ] Database tables created (run `supabase/schema.sql`)
 - [ ] Mapbox token obtained and configured
 - [ ] Environment variables set in hosting platform
-- [ ] Production build tested locally (`npx expo export:web`)
+- [ ] Production build tested locally (`npx expo export --platform web`)
 - [ ] Map renders correctly on web
 - [ ] Station data loads from Supabase
 - [ ] Reports can be submitted successfully
@@ -107,10 +107,10 @@ npm start
 # Press 'w' for web
 
 # Build for production
-npx expo export:web
+npx expo export --platform web
 
 # Preview production build
-npx serve web-build
+npx serve dist
 ```
 
 ## 📝 Environment Variables Needed
@@ -125,8 +125,8 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 1. **Test the build locally:**
    ```bash
-   npx expo export:web
-   npx serve web-build
+   npx expo export --platform web
+   npx serve dist
    ```
 
 2. **Set up Supabase:**
