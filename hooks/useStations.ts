@@ -126,10 +126,18 @@ export function useStations(options: UseStationsOptions = {}): UseStationsReturn
         // Only set error if we have no cached data
         // If Supabase isn't configured, empty array is expected
         const errorMessage = error.message.toLowerCase();
-        if (!errorMessage.includes('not configured') && !errorMessage.includes('placeholder')) {
+        const isExpectedConfigIssue =
+          errorMessage.includes('not configured') || errorMessage.includes('placeholder');
+        const isExpectedNetworkIssue =
+          errorMessage.includes('failed to fetch') ||
+          errorMessage.includes('network request failed') ||
+          errorMessage.includes('fetch failed') ||
+          errorMessage.includes('load failed');
+
+        if (!isExpectedConfigIssue && !isExpectedNetworkIssue) {
           setError(error);
         } else {
-          // Supabase not configured - this is expected, don't show error
+          // Supabase/network unavailable - expected during local setup or offline use
           setStations([]);
           setError(null);
         }

@@ -17,6 +17,8 @@ interface MapViewProps {
   styleURL?: string;
   /** Callback when map is ready */
   onMapReady?: (map: mapboxgl.Map) => void;
+  /** Callback when map cannot be initialized */
+  onMapError?: (error: Error) => void;
   /** Container style */
   style?: React.CSSProperties;
   /** Stations to display as markers */
@@ -43,6 +45,7 @@ export default function MapView({
   accessToken,
   styleURL = 'mapbox://styles/mapbox/streets-v11',
   onMapReady,
+  onMapError,
   style,
   stations = [],
   onMarkerClick,
@@ -71,6 +74,7 @@ export default function MapView({
     });
 
     if (!token) {
+      onMapError?.(new Error('Mapbox token missing'));
       console.warn(
         '⚠️ Mapbox access token not provided. Map will not render.\n' +
         'Please set EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN in your .env file or pass accessToken prop.\n' +
@@ -143,6 +147,7 @@ export default function MapView({
       });
     } catch (error) {
       console.error('Error initializing map:', error);
+      onMapError?.(error instanceof Error ? error : new Error('Error initializing Mapbox'));
       // Show error state
       if (mapContainer.current) {
         mapContainer.current.style.backgroundColor = '#f5f5f5';
@@ -161,7 +166,7 @@ export default function MapView({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latitude, longitude, zoom, styleURL, accessToken]);
+  }, [latitude, longitude, zoom, styleURL, accessToken, onMapError, onMapReady]);
 
   // Update markers when stations change
   useEffect(() => {
@@ -220,14 +225,14 @@ export default function MapView({
     el.style.border = `3px solid ${colors.neutral.white}`;
     el.style.cursor = 'pointer';
     el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-    el.style.transition = 'transform 0.2s';
+    el.style.transition = 'box-shadow 0.15s ease';
     
-    // Add hover effect
+    // Keep hover feedback without changing marker position/size.
     el.addEventListener('mouseenter', () => {
-      el.style.transform = 'scale(1.2)';
+      el.style.boxShadow = '0 4px 10px rgba(0,0,0,0.4)';
     });
     el.addEventListener('mouseleave', () => {
-      el.style.transform = 'scale(1)';
+      el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
     });
     
     // Add title for accessibility

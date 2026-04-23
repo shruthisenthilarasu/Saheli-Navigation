@@ -4,7 +4,9 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
+  Alert,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, spacing, typography } from '../theme';
@@ -17,6 +19,7 @@ import {
   AmenityItem,
 } from '../components/ui';
 import { StationDetailScreenProps } from '../navigation/types';
+import ReportStationIssueModal from '../components/ReportStationIssueModal';
 
 /**
  * StationDetailScreen UI
@@ -26,34 +29,64 @@ import { StationDetailScreenProps } from '../navigation/types';
 export default function StationDetailScreen() {
   const navigation = useNavigation<StationDetailScreenProps['navigation']>();
   const route = useRoute<StationDetailScreenProps['route']>();
-  const { stationId } = route.params;
+  const { stationId, station } = route.params;
+  const [isReportModalVisible, setIsReportModalVisible] = React.useState(false);
   
-  // Placeholder data - in real app, fetch from API using stationId
-  const stationName = `Station ${stationId}`;
-  const status: 'safe' | 'caution' | 'unsafe' = 'safe';
+  const stationName = station?.name ?? `Station ${stationId}`;
+  const status: 'safe' | 'caution' | 'unsafe' = !station
+    ? 'safe'
+    : !station.status.isOperational || !station.status.isAccessible
+      ? 'caution'
+      : station.safety <= 2
+        ? 'unsafe'
+        : 'safe';
   const distance = '0.5 km';
   const scores = {
-    cleanliness: 4,
-    safety: 5,
-    water: 3,
-    locks: 4,
-    lighting: 5,
+    cleanliness: station?.cleanliness ?? 4,
+    safety: station?.safety ?? 5,
+    water: station?.waterAvailability === 'available' ? 5 : station?.waterAvailability === 'unknown' ? 3 : 1,
+    locks: station?.privacy ?? 4,
+    lighting: station?.safety ?? 5,
   };
   const amenities = [
-    { icon: <Text>💧</Text>, label: 'Water Available', available: true },
+    { icon: <Text>💧</Text>, label: 'Water Available', available: station?.waterAvailability === 'available' },
     { icon: <Text>🩸</Text>, label: 'Sanitary Pads', available: true },
     { icon: <Text>💡</Text>, label: 'Good Lighting', available: true },
-    { icon: <Text>♿</Text>, label: 'Accessible', available: false },
+    { icon: <Text>♿</Text>, label: 'Accessible', available: station?.status.isAccessible ?? false },
   ];
 
-  const handleGetDirections = () => {
-    // Navigation logic will be implemented later
-    console.log('Get directions');
+  const handleGetDirections = async () => {
+    if (!station?.coordinates) {
+      Alert.alert('Directions unavailable', 'Coordinates are missing for this station.');
+      return;
+    }
+
+    const { latitude, longitude } = station.coordinates;
+    const encodedLabel = encodeURIComponent(station.name || 'Station');
+    const mapsUrl =
+      Platform.OS === 'ios'
+        ? `http://maps.apple.com/?daddr=${latitude},${longitude}&q=${encodedLabel}`
+        : `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(mapsUrl);
+      if (!canOpen) {
+        Alert.alert('Unable to open maps', 'No map application is available on this device.');
+        return;
+      }
+      await Linking.openURL(mapsUrl);
+    } catch (error) {
+      console.error('Error opening directions:', error);
+      Alert.alert('Unable to open directions', 'Please try again.');
+    }
   };
 
   const handleReportIssue = () => {
-    // Navigation logic will be implemented later
-    console.log('Report issue');
+    if (!station) {
+      Alert.alert('Report unavailable', 'Station details are missing for this report.');
+      return;
+    }
+    setIsReportModalVisible(true);
   };
   const getStatusLabel = () => {
     switch (status) {
@@ -121,6 +154,11 @@ export default function StationDetailScreen() {
           style={styles.reportButton}
         />
       </View>
+      <ReportStationIssueModal
+        visible={isReportModalVisible}
+        station={station ?? null}
+        onClose={() => setIsReportModalVisible(false)}
+      />
     </ScrollView>
   );
 }

@@ -5,11 +5,13 @@ import HomeMapScreen from '../screens/HomeMapScreen';
 import StationDetailScreen from '../screens/StationDetailScreen';
 import EmergencySOSScreen from '../screens/EmergencySOSScreen';
 import InfoScreen from '../screens/InfoScreen';
+import { Station } from '../types/models';
 
 export type RootStackParamList = {
   HomeMap: undefined;
   StationDetail: {
     stationId: string;
+    station?: Station;
   };
   EmergencySOS: undefined;
   Info: undefined;

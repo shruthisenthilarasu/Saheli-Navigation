@@ -50,6 +50,7 @@ export default function HomeMapScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [containerDimensions, setContainerDimensions] = useState({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
+  const [mapboxFailed, setMapboxFailed] = useState(false);
   
   // Fetch real stations from Supabase
   const { stations: supabaseStations, loading, error, refresh } = useStations();
@@ -262,6 +263,8 @@ export default function HomeMapScreen() {
     }
     return tirupurFallbackStations;
   }, [supabaseStations]);
+
+  const isUsingFallbackStations = supabaseStations.length === 0;
   
   // Filter stations based on selected filter - MUST be defined before useEffect
   const filteredStations = useMemo(() => {
@@ -293,6 +296,11 @@ export default function HomeMapScreen() {
   const hasValidMapboxToken = mapboxToken && 
                               mapboxToken !== 'your_mapbox_token_here' && 
                               mapboxToken.trim().length > 0;
+
+  // Reset fallback state when token/config changes
+  useEffect(() => {
+    setMapboxFailed(false);
+  }, [hasValidMapboxToken]);
   
   // Debug logging - Now filteredStations is defined
   useEffect(() => {
@@ -327,7 +335,7 @@ export default function HomeMapScreen() {
   const handleMarkerPress = (station: Station) => {
     console.log('Marker pressed:', station);
     // Navigate to station detail screen
-    navigation.navigate('StationDetail', { stationId: station.id });
+    navigation.navigate('StationDetail', { stationId: station.id, station });
   };
   
   // Convert Station to MockStation format for MarkerOverlay (fallback when map not available)
@@ -368,7 +376,13 @@ export default function HomeMapScreen() {
   }
 
   // Show error state only if it's a real error (not just missing Supabase config)
-  if (error && stations.length === 0 && error.message && !error.message.toLowerCase().includes('not configured')) {
+  if (
+    error &&
+    stations.length === 0 &&
+    error.message &&
+    !error.message.toLowerCase().includes('not configured') &&
+    !isUsingFallbackStations
+  ) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <Text style={styles.errorText}>Error loading stations</Text>
@@ -388,54 +402,41 @@ export default function HomeMapScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Debug overlay - shows current state */}
-      <View style={styles.debugOverlay}>
-        <Text style={styles.debugText}>
-          Stations: {stations.length} | Filtered: {filteredStations.length} | Loading: {loading ? 'Yes' : 'No'}
-        </Text>
-        {error && <Text style={styles.debugError}>Error: {error.message}</Text>}
-      </View>
+      {/* Debug overlay - only visible during development */}
+      {__DEV__ && (
+        <View style={styles.debugOverlay}>
+          <Text style={styles.debugText}>
+            Stations: {stations.length} | Filtered: {filteredStations.length} | Loading: {loading ? 'Yes' : 'No'}
+          </Text>
+          {error && !isUsingFallbackStations && <Text style={styles.debugError}>Error: {error.message}</Text>}
+        </View>
+      )}
       
       {/* Map Container - Full Screen */}
       <View style={styles.mapContainer}>
-        {/* Tirupur Map Prototype - Always visible, works without Mapbox */}
-        {(() => {
-          try {
-            console.log('[HomeMapScreen] Rendering TirupurMapPrototype with', filteredStations.length, 'stations');
-            return (
-              <TirupurMapPrototype
-                stations={filteredStations}
-                onMarkerClick={handleMarkerPress}
-                style={StyleSheet.absoluteFill}
-              />
-            );
-          } catch (error) {
-            console.error('[HomeMapScreen] Error rendering TirupurMapPrototype:', error);
-            return (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: '#EF4444', fontSize: 16 }}>Error loading map</Text>
-                <Text style={{ color: '#6B7280', fontSize: 12, marginTop: 8 }}>
-                  {error instanceof Error ? error.message : 'Unknown error'}
-                </Text>
-              </View>
-            );
-          }
-        })()}
-
-        {/* MapView on web if available and token is configured - Only show if Mapbox is working */}
-        {/* For now, hide Mapbox to show prototype map - uncomment when Mapbox is fully configured */}
-        {false && Platform.OS === 'web' && MapView && hasValidMapboxToken && (
+        {/* Use Mapbox on web when configured; fallback to prototype if unavailable */}
+        {Platform.OS === 'web' && MapView && !mapboxFailed ? (
           <View style={styles.mapViewWrapper}>
             <MapView
               latitude={DEFAULT_CENTER.latitude}
               longitude={DEFAULT_CENTER.longitude}
               zoom={12}
-              accessToken={mapboxToken}
+              accessToken={hasValidMapboxToken ? mapboxToken : undefined}
               stations={filteredStations}
               onMarkerClick={handleMarkerPress}
               enableClustering={filteredStations.length > 50}
+              onMapError={(mapError) => {
+                console.warn('[HomeMapScreen] Mapbox unavailable, falling back to prototype:', mapError.message);
+                setMapboxFailed(true);
+              }}
             />
           </View>
+        ) : (
+          <TirupurMapPrototype
+            stations={filteredStations}
+            onMarkerClick={handleMarkerPress}
+            style={StyleSheet.absoluteFill}
+          />
         )}
       </View>
 

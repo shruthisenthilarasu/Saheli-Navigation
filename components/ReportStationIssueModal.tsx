@@ -53,6 +53,7 @@ export default function ReportStationIssueModal({
   const [selectedIssueType, setSelectedIssueType] = useState<IssueType | null>(null);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSubmit = async () => {
     if (!station || !selectedIssueType) {
@@ -114,38 +115,17 @@ export default function ReportStationIssueModal({
       });
 
       if (result.queued) {
-        Alert.alert(
-          'Report Queued',
-          'You are offline. Your report has been queued and will be submitted when connection is restored.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                handleClose();
-                if (onReportSubmitted) {
-                  onReportSubmitted();
-                }
-              },
-            },
-          ]
-        );
+        setSuccessMessage('Thank you for your feedback! (Saved offline and queued)');
       } else {
-        Alert.alert(
-          'Report Submitted',
-          `Your report has been submitted. The station status will be updated temporarily and expire in 24 hours unless reverified.`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                handleClose();
-                if (onReportSubmitted) {
-                  onReportSubmitted();
-                }
-              },
-            },
-          ]
-        );
+        setSuccessMessage('Thank you for your feedback!');
       }
+
+      setTimeout(() => {
+        handleClose();
+        if (onReportSubmitted) {
+          onReportSubmitted();
+        }
+      }, 1200);
     } catch (error) {
       console.error('Error submitting report:', error);
       Alert.alert(
@@ -160,6 +140,7 @@ export default function ReportStationIssueModal({
   const handleClose = () => {
     setSelectedIssueType(null);
     setComment('');
+    setSuccessMessage('');
     onClose();
   };
 
@@ -234,6 +215,9 @@ export default function ReportStationIssueModal({
               )}
             </TouchableOpacity>
           </View>
+          {successMessage ? (
+            <Text style={styles.successMessage}>{successMessage}</Text>
+          ) : null}
         </View>
       </View>
     </Modal>
@@ -333,6 +317,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  successMessage: {
+    marginTop: 14,
+    color: '#16A34A',
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Pressable, Text, Dimensions } from 'react-native';
+import { View, StyleSheet, Pressable, Text, LayoutChangeEvent } from 'react-native';
 import { Station } from '../types/models';
 import { colors } from '../theme';
 
@@ -16,8 +16,6 @@ const MAP_BOUNDS = {
   minLng: 77.29,
   maxLng: 77.40,
 };
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
  * Convert lat/lng coordinates to pixel positions on the map
@@ -57,22 +55,28 @@ export default function TirupurMapPrototype({
   onMarkerClick, 
   style 
 }: TirupurMapPrototypeProps) {
-  const mapWidth = SCREEN_WIDTH || 800;
-  const mapHeight = SCREEN_HEIGHT || 600;
+  const [mapSize, setMapSize] = React.useState({ width: 800, height: 600 });
+  const mapWidth = mapSize.width;
+  const mapHeight = mapSize.height;
+
+  const handleLayout = React.useCallback((event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    if (width > 0 && height > 0) {
+      setMapSize({ width, height });
+    }
+  }, []);
 
   // Debug logging
   console.log('[TirupurMapPrototype] Rendering:', {
     stationsCount: stations.length,
     mapWidth,
     mapHeight,
-    screenWidth: SCREEN_WIDTH,
-    screenHeight: SCREEN_HEIGHT,
   });
 
   // Error boundary - ensure we always render something
   try {
     return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, style]} onLayout={handleLayout}>
       {/* SVG Map Background */}
       <View style={styles.mapBackground}>
         {/* Grid pattern for visual reference */}
@@ -148,6 +152,7 @@ export default function TirupurMapPrototype({
                 },
               ]}
               onPress={() => onMarkerClick?.(station)}
+              hitSlop={10}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={`${station.name}, ${station.verificationStatus}`}
